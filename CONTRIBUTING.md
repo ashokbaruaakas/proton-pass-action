@@ -39,6 +39,26 @@ To maintain standard portability across all default GitHub runner architectures 
 
 ---
 
+## ✅ Automated Testing on `main`
+
+This repository runs an automated integration test workflow on every push to `main` (including post-merge commits). You can also run it manually via **workflow_dispatch**.
+
+Current integration test convention:
+
+```bash
+TEST_SECRET=pass://TestVault/TEST/TEST_SECRET
+```
+
+The CI job executes the local composite action and verifies that `TEST_SECRET` is injected into `GITHUB_ENV` with the expected value from Proton Pass.
+
+Required repository secret:
+
+```text
+PROTON_PAT
+```
+
+---
+
 ## 🐛 Reporting Bugs & Feature Requests
 
 ### Found a Bug?

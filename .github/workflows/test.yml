@@ -1,0 +1,39 @@
+name: "✅ Run Proton Pass Action Tests"
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  integration-test:
+    name: "Integration Test (Proton Pass Fetch)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Fetch test secret via local action
+        uses: ./
+        with:
+          proton_pat: ${{ secrets.PROTON_PAT }}
+          secrets_map: |
+            TEST_SECRET=pass://TestVault/TEST/TEST_SECRET
+
+      - name: Assert fetched secret value
+        shell: bash
+        run: |
+          EXPECTED_TEST_SECRET="Don't Share This TEST Secret VAL"
+
+          if [ -z "${TEST_SECRET:-}" ]; then
+            echo "❌ Error: TEST_SECRET was not populated in GITHUB_ENV."
+            exit 1
+          fi
+
+          if [ "$TEST_SECRET" != "$EXPECTED_TEST_SECRET" ]; then
+            echo "❌ Error: TEST_SECRET value did not match expected test vault value."
+            exit 1
+          fi
+
+          echo "✅ Integration check passed: TEST_SECRET resolved correctly."
