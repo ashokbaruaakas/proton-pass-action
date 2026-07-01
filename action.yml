@@ -63,36 +63,27 @@ runs:
 
         # 4. Dynamic Secrets Engine Loop
         while IFS= read -r line || [[ -n "$line" ]]; do
-          # Strip leading/trailing whitespaces or carriage returns (\r from Windows lines)
           line=$(echo "$line" | xargs)
-
-          # Safely skip blank lines and explicit comments
           [[ -z "$line" || "$line" =~ ^# ]] && continue
 
-          # Validate mapping format (Must contain an '=')
           if [[ "$line" != *=* ]]; then
             echo "⚠️ Warning: Skipping malformed configuration line: '$line'. Expected KEY=VALUE format."
             continue
           fi
 
-          # Isolate targeted environment keys and the corresponding Proton Pass URI
           ENV_VAR_NAME="${line%%=*}"
           SECRET_PATH="${line#*=}"
 
           echo "🔄 Pulling payload for variable: [$ENV_VAR_NAME]..."
 
-          # Fetch value safely out of the newly authenticated local session
-          if ! FETCHED_SECRET=$(pass-cli secret get "$SECRET_PATH" 2>/dev/null); then
+          if ! FETCHED_SECRET=$(pass-cli item view "$SECRET_PATH" 2>/dev/null); then
             echo "❌ Error: Item path does not exist or vault access is unauthorized: $SECRET_PATH"
-            # Log out before terminating to keep the runner environment clean
             pass-cli logout &>/dev/null || true
             exit 1
           fi
 
-          # Protect the runtime logs from leaking data via accidental prints
           echo "::add-mask::$FETCHED_SECRET"
 
-          # Inject cleanly into downstream runner scope using safe multiline EOF blocks
           echo "$ENV_VAR_NAME<<EOF" >> $GITHUB_ENV
           echo "$FETCHED_SECRET" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
