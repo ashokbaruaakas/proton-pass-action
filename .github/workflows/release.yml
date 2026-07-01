@@ -41,11 +41,12 @@ jobs:
           git config --global user.email "github-actions[bot]@://github.com"
 
       - name: Generate Dynamic SemVer Tags Locally
+        env:
+          RAW_VERSION: ${{ inputs.version }}
         run: |
-          VERSION_TAG="v${{ inputs.version }}"
+          VERSION_TAG="v${RAW_VERSION}"
 
-          # DYNAMIC FIX: Extract the first character/number before the dot (e.g., "1.0.1" -> "v1")
-          MAJOR_VERSION="v${{ inputs.version %%.* }}"
+          MAJOR_VERSION="v${RAW_VERSION%%.*}"
 
           echo "Targeting specific version tag: $VERSION_TAG"
           echo "Calculated dynamic major version: $MAJOR_VERSION"
@@ -71,7 +72,7 @@ jobs:
       - name: Sync and Propagating Moving Version Pointers
         run: |
           echo "Pushing moving tags to synchronize tracking repositories..."
-          # Both push paths now rely on dynamic environmental variables
+          # Both push paths rely on dynamic environmental variables
           git push origin "$VERSION_TAG" --force
           git push origin "$MAJOR_VERSION" --force
           echo "🎉 System successfully synced to $VERSION_TAG and dynamic major alias @$MAJOR_VERSION!"
