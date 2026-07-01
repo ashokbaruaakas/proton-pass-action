@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Checkout Code Engine
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0 # Crucial: Fetches full history so GitHub can calculate changes since the last tag
 
