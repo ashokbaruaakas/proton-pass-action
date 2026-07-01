@@ -7,11 +7,6 @@ on:
         description: "New version to release (e.g., 1.0.1, 2.0.0)"
         required: true
         type: string
-      release_notes:
-        description: "Description of changes included in this version"
-        required: false
-        type: string
-        default: "Minor bug fixes and performance improvements."
 
 jobs:
   release:
@@ -24,7 +19,7 @@ jobs:
       - name: Checkout Code Engine
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Pulls full historical git refs to safely move tags
+          fetch-depth: 0 # Crucial: Fetches full history so GitHub can calculate changes since the last tag
 
       - name: Validate Action Schema Syntax
         run: |
@@ -38,14 +33,13 @@ jobs:
       - name: Configure Git Author Metadata
         run: |
           git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@://github.com"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Generate Dynamic SemVer Tags Locally
         env:
           RAW_VERSION: ${{ inputs.version }}
         run: |
           VERSION_TAG="v${RAW_VERSION}"
-
           MAJOR_VERSION="v${RAW_VERSION%%.*}"
 
           echo "Targeting specific version tag: $VERSION_TAG"
@@ -65,14 +59,12 @@ jobs:
         run: |
           echo "Deploying official release asset metadata..."
           gh release create "$VERSION_TAG" \
-            --title "$VERSION_TAG - Production Stable" \
-            --notes "${{ inputs.release_notes }}" \
+            --generate-notes \
             --target main
 
       - name: Sync and Propagating Moving Version Pointers
         run: |
           echo "Pushing moving tags to synchronize tracking repositories..."
-          # Both push paths rely on dynamic environmental variables
           git push origin "$VERSION_TAG" --force
           git push origin "$MAJOR_VERSION" --force
           echo "🎉 System successfully synced to $VERSION_TAG and dynamic major alias @$MAJOR_VERSION!"
