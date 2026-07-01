@@ -94,32 +94,6 @@ runs:
 
         # 5. Clean Session Demolition
         echo "🔒 Terminating temporary runner session..."
-        echo "🧪 DEBUG: Collecting runtime storage diagnostics before logout..."
-        echo "🧪 DEBUG: pass-cli version: $(pass-cli --version 2>/dev/null || echo unavailable)"
-        echo "🧪 DEBUG: HOME=${HOME:-<unset>}"
-        echo "🧪 DEBUG: TMPDIR=${TMPDIR:-/tmp}"
-        echo "🧪 DEBUG: RUNNER_TEMP=${RUNNER_TEMP:-<unset>}"
-        echo "🧪 DEBUG: XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-<unset>}"
-        echo "🧪 DEBUG: XDG_DATA_HOME=${XDG_DATA_HOME:-<unset>}"
-
-        EFFECTIVE_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
-        EFFECTIVE_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
-        echo "🧪 DEBUG: Effective config home: $EFFECTIVE_CONFIG_HOME"
-        echo "🧪 DEBUG: Effective data home: $EFFECTIVE_DATA_HOME"
-
-        if [ -d "$EFFECTIVE_CONFIG_HOME" ]; then
-          ls -lad "$EFFECTIVE_CONFIG_HOME"
-        else
-          echo "🧪 DEBUG: Config directory missing: $EFFECTIVE_CONFIG_HOME"
-        fi
-
-        if [ -d "$EFFECTIVE_DATA_HOME" ]; then
-          ls -lad "$EFFECTIVE_DATA_HOME"
-        else
-          echo "🧪 DEBUG: Data directory missing: $EFFECTIVE_DATA_HOME"
-        fi
-
-        echo "🧪 DEBUG: Executing pass-cli logout..."
         if ! pass-cli logout; then
           echo "⚠️ Warning: Logout command issued an unusual termination signal."
         fi
