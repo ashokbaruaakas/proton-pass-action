@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "New version to release (e.g., 1.0.1, 1.1.0)"
+        description: "New version to release (e.g., 1.0.1, 2.0.0)"
         required: true
         type: string
       release_notes:
@@ -18,7 +18,7 @@ jobs:
     name: "Build, Tag, and Deploy Market Version"
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Crucial: Allows the runner to create tags and push releases
+      contents: write # Allows the runner to create tags and push releases
 
     steps:
       - name: Checkout Code Engine
@@ -40,21 +40,28 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@://github.com"
 
-      - name: Generate SemVer Tags Locally
+      - name: Generate Dynamic SemVer Tags Locally
         run: |
           VERSION_TAG="v${{ inputs.version }}"
-          echo "Targeting specific version tag: $VERSION_TAG"
 
-          # Create or force-override localized Git tag tracking blocks
-          git tag -a "$VERSION_TAG" -m "Automated release $VERSION_TAG"
-          git tag -fa v1 -m "Moving major version pointer to $VERSION_TAG"
+          # DYNAMIC FIX: Extract the first character/number before the dot (e.g., "1.0.1" -> "v1")
+          MAJOR_VERSION="v${{ inputs.version %%.* }}"
+
+          echo "Targeting specific version tag: $VERSION_TAG"
+          echo "Calculated dynamic major version: $MAJOR_VERSION"
+
+          # Create and force-override localized Git tag tracking blocks
+          git tag -fa "$VERSION_TAG" -m "Automated release $VERSION_TAG"
+          git tag -fa "$MAJOR_VERSION" -m "Moving major version pointer to $VERSION_TAG"
+
+          # Save these calculated values to environment variables for subsequent steps
+          echo "VERSION_TAG=$VERSION_TAG" >> $GITHUB_ENV
+          echo "MAJOR_VERSION=$MAJOR_VERSION" >> $GITHUB_ENV
 
       - name: Publish Official GitHub Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Built-in token, no configuration needed
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION_TAG="v${{ inputs.version }}"
-
           echo "Deploying official release asset metadata..."
           gh release create "$VERSION_TAG" \
             --title "$VERSION_TAG - Production Stable" \
@@ -64,6 +71,7 @@ jobs:
       - name: Sync and Propagating Moving Version Pointers
         run: |
           echo "Pushing moving tags to synchronize tracking repositories..."
-          git push origin "v${{ inputs.version }}"
-          git push origin v1 --force
-          echo "🎉 System successfully synced to v${{ inputs.version }} and @v1!"
+          # Both push paths now rely on dynamic environmental variables
+          git push origin "$VERSION_TAG" --force
+          git push origin "$MAJOR_VERSION" --force
+          echo "🎉 System successfully synced to $VERSION_TAG and dynamic major alias @$MAJOR_VERSION!"
