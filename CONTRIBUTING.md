@@ -51,9 +51,10 @@ Current integration test convention:
 
 ```bash
 TEST_SECRET=pass://TestVault/TEST/TEST_SECRET
+TEST_MULTILINE_SECRET=pass://TestVault/TEST/TEST_MULTILINE_SECRET
 ```
 
-The CI job executes the local composite action and verifies that `TEST_SECRET` is injected into `GITHUB_ENV` with the expected value from Proton Pass.
+The CI job executes the local composite action and verifies both single-line and multiline test secrets are injected into `GITHUB_ENV` with exact expected values.
 
 Required repository secret:
 

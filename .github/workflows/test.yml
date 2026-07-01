@@ -20,11 +20,13 @@ jobs:
           proton_pat: ${{ secrets.PROTON_PAT }}
           secrets_map: |
             TEST_SECRET=pass://TestVault/TEST/TEST_SECRET
+            TEST_MULTILINE_SECRET=pass://TestVault/TEST/TEST_MULTILINE_SECRET
 
-      - name: Assert fetched secret value
+      - name: Assert fetched secret values
         shell: bash
         run: |
           EXPECTED_TEST_SECRET="Don't Share This TEST Secret VAL"
+          EXPECTED_MULTILINE_TEST_SECRET=$'-----BEGIN OPENSSH PRIVATE KEY-----\nline-one-test\nline-two-test+/=\n-----END OPENSSH PRIVATE KEY-----'
 
           if [ -z "${TEST_SECRET:-}" ]; then
             echo "❌ Error: TEST_SECRET was not populated in GITHUB_ENV."
@@ -36,4 +38,14 @@ jobs:
             exit 1
           fi
 
-          echo "✅ Integration check passed: TEST_SECRET resolved correctly."
+          if [ -z "${TEST_MULTILINE_SECRET:-}" ]; then
+            echo "❌ Error: TEST_MULTILINE_SECRET was not populated in GITHUB_ENV."
+            exit 1
+          fi
+
+          if [ "$TEST_MULTILINE_SECRET" != "$EXPECTED_MULTILINE_TEST_SECRET" ]; then
+            echo "❌ Error: TEST_MULTILINE_SECRET did not preserve expected multiline content."
+            exit 1
+          fi
+
+          echo "✅ Integration checks passed: single-line and multiline secrets resolved correctly."
