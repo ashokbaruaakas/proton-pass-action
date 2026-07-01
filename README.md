@@ -75,6 +75,14 @@ The `secrets_map` parameter reads standard Proton Pass entry schemas:
 
 ---
 
+## 🤝 Contributing
+
+Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+
+Please see our [CONTRIBUTING.md](CONTRIBUTING.md) guide for details on our code standards, how to submit feature requests, and how to privately report security vulnerabilities.
+
+---
+
 ## 📄 License
 
 This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for the full text. Feel free to use, modify, and distribute it in both personal and commercial projects.
