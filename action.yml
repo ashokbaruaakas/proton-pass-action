@@ -48,12 +48,20 @@ runs:
         fi
         echo "✅ Proton Pass CLI successfully initialized."
 
+        # 3. Headless Authentication Flow (As documented)
+        echo "🔑 Authenticating headlessly via Personal Access Token..."
+        if ! pass-cli login; then
+          echo "❌ Error: Headless login failed. Verify token string scope and formatting."
+          exit 1
+        fi
+        echo "✅ Headless authentication successful. Initializing session."
+
         echo ""
         echo "===================================================="
         echo "🔑 PROCESSING SECRETS INGESTION"
         echo "===================================================="
 
-        # 3. Dynamic Secrets Engine Loop
+        # 4. Dynamic Secrets Engine Loop
         while IFS= read -r line || [[ -n "$line" ]]; do
           # Strip leading/trailing whitespaces or carriage returns (\r from Windows lines)
           line=$(echo "$line" | xargs)
@@ -73,16 +81,18 @@ runs:
 
           echo "🔄 Pulling payload for variable: [$ENV_VAR_NAME]..."
 
-          # Fetch value safely using headless non-interactive mode driven purely by the env PAT token
-          if ! FETCHED_SECRET=$(pass-cli secret get "$SECRET_PATH" --no-session 2>/dev/null); then
-            echo "❌ Error: Authentication failed, vault unauthorized, or item path does not exist: $SECRET_PATH"
+          # Fetch value safely out of the newly authenticated local session
+          if ! FETCHED_SECRET=$(pass-cli secret get "$SECRET_PATH" 2>/dev/null); then
+            echo "❌ Error: Item path does not exist or vault access is unauthorized: $SECRET_PATH"
+            # Log out before terminating to keep the runner environment clean
+            pass-cli logout &>/dev/null || true
             exit 1
           fi
 
           # Protect the runtime logs from leaking data via accidental prints
           echo "::add-mask::$FETCHED_SECRET"
 
-          # Inject cleanly into the downstream runner shell scope using safe multiline EOF blocks
+          # Inject cleanly into downstream runner scope using safe multiline EOF blocks
           echo "$ENV_VAR_NAME<<EOF" >> $GITHUB_ENV
           echo "$FETCHED_SECRET" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
@@ -90,6 +100,13 @@ runs:
           echo "✅ Successfully mapped and masked: $ENV_VAR_NAME"
 
         done <<< "${{ inputs.secrets_map }}"
+
+        # 5. Clean Session Demolition
+        echo "🔒 Terminating temporary runner session..."
+        if ! pass-cli logout; then
+          echo "⚠️ Warning: Logout command issued an unusual termination signal."
+        fi
+        echo "✅ Session fully purged from memory."
 
         echo ""
         echo "===================================================="
