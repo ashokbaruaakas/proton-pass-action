@@ -82,16 +82,24 @@ runs:
             exit 1
           fi
 
-          ESCAPED_SECRET="${FETCHED_SECRET//'%'/'%25'}"
-          ESCAPED_SECRET="${ESCAPED_SECRET//$'\r'/'%0D'}"
-          ESCAPED_SECRET="${ESCAPED_SECRET//$'\n'/'%0A'}"
-          echo "::add-mask::$ESCAPED_SECRET"
+          while IFS= read -r secret_line || [[ -n "$secret_line" ]]; do
+            if [ -n "$secret_line" ]; then
+              echo "::add-mask::$secret_line"
+            fi
+          done <<< "$FETCHED_SECRET"
 
-          echo "$ENV_VAR_NAME<<EOF" >> $GITHUB_ENV
-          echo "$FETCHED_SECRET" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          DELIMITER="PROTON_PASS_SECRET_${RANDOM}_${RANDOM}_EOF"
+          while grep -qx "$DELIMITER" <<< "$FETCHED_SECRET"; do
+            DELIMITER="PROTON_PASS_SECRET_${RANDOM}_${RANDOM}_EOF"
+          done
 
-          echo "✅ Successfully mapped and masked: $ENV_VAR_NAME"
+          {
+            printf '%s<<%s\n' "$ENV_VAR_NAME" "$DELIMITER"
+            printf '%s\n' "$FETCHED_SECRET"
+            printf '%s\n' "$DELIMITER"
+          } >> "$GITHUB_ENV"
+
+          echo "✅ Successfully mapped and completely masked: $ENV_VAR_NAME"
 
         done <<< "${{ inputs.secrets_map }}"
 
