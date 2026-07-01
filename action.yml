@@ -82,7 +82,10 @@ runs:
             exit 1
           fi
 
-          echo "::add-mask::$FETCHED_SECRET"
+          ESCAPED_SECRET="${FETCHED_SECRET//'%'/'%25'}"
+          ESCAPED_SECRET="${ESCAPED_SECRET//$'\r'/'%0D'}"
+          ESCAPED_SECRET="${ESCAPED_SECRET//$'\n'/'%0A'}"
+          echo "::add-mask::$ESCAPED_SECRET"
 
           echo "$ENV_VAR_NAME<<EOF" >> $GITHUB_ENV
           echo "$FETCHED_SECRET" >> $GITHUB_ENV

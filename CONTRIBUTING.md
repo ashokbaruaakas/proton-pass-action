@@ -33,7 +33,10 @@ To maintain standard portability across all default GitHub runner architectures 
 - **No Side-Effects**: This action must remain completely headless. Do not write actions that drop active user sessions, generate interactive login prompts, or write unmasked persistence caches to the runner disk.
 - **Variable Masking**: Any script modification that touches raw secret data **must** pipe the string payload into the log scrubber stream immediately:
   ```bash
-  echo "::add-mask::\$FETCHED_SECRET"
+  ESCAPED_SECRET="${FETCHED_SECRET//'%'/'%25'}"
+  ESCAPED_SECRET="${ESCAPED_SECRET//$'\r'/'%0D'}"
+  ESCAPED_SECRET="${ESCAPED_SECRET//$'\n'/'%0A'}"
+  echo "::add-mask::$ESCAPED_SECRET"
   ```
 - **Line Wrapping**: Always structure environment variable injections via multiline `EOF` markers to preserve complex text targets like private SSH configurations or SSL certs.
 
