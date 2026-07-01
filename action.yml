@@ -1,0 +1,93 @@
+name: "Proton Pass Secret Fetcher"
+description: "Installs Proton Pass CLI and securely pulls multiple vault secrets into GITHUB_ENV"
+author: "Ashok Barua Akas"
+
+inputs:
+  proton_pat:
+    description: "The Proton Pass Personal Access Token (stored in GitHub Secrets)"
+    required: true
+  secrets_map:
+    description: "Newline-separated mapping format: ENV_VAR_NAME=pass://vault/item/field"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Execute Proton Pass Pipeline
+      shell: bash
+      env:
+        PROTON_PASS_PERSONAL_ACCESS_TOKEN: ${{ inputs.proton_pat }}
+      run: |
+        set -eo pipefail
+
+        echo "===================================================="
+        echo "🔒 PROTON PASS CORE ENGINE: STARTING SETUP"
+        echo "===================================================="
+
+        # 1. Input Sanity Checking
+        if [ -z "$PROTON_PASS_PERSONAL_ACCESS_TOKEN" ]; then
+          echo "❌ Error: proton_pat input is empty or unresolved."
+          exit 1
+        fi
+
+        # 2. Optimized Quick Installation
+        echo "📦 Fetching latest production binary..."
+        if ! curl -fsSL https://proton.me/download/pass-cli/install.sh | bash; then
+          echo "❌ Error: Failed to download or execute the Proton Pass installer script."
+          exit 1
+        fi
+
+        # Verify execution path availability
+        if ! command -v pass-cli &> /dev/null; then
+          echo "❌ Error: pass-cli binary installed but not found in runtime PATH."
+          exit 1
+        fi
+        echo "✅ Proton Pass CLI successfully initialized."
+
+        echo ""
+        echo "===================================================="
+        echo "🔑 PROCESSING SECRETS INGESTION"
+        echo "===================================================="
+
+        # 3. Dynamic Secrets Engine Loop
+        while IFS= read -r line || [[ -n "$line" ]]; do
+          # Strip leading/trailing whitespaces or carriage returns (\r from Windows lines)
+          line=$(echo "$line" | xargs)
+
+          # Safely skip blank lines and explicit comments
+          [[ -z "$line" || "$line" =~ ^# ]] && continue
+
+          # Validate mapping format (Must contain an '=')
+          if [[ "$line" != *=* ]]; then
+            echo "⚠️ Warning: Skipping malformed configuration line: '$line'. Expected KEY=VALUE format."
+            continue
+          fi
+
+          # Isolate targeted environment keys and the corresponding Proton Pass URI
+          ENV_VAR_NAME="${line%%=*}"
+          SECRET_PATH="${line#*=}"
+
+          echo "🔄 Pulling payload for variable: [$ENV_VAR_NAME]..."
+
+          # Fetch value safely using headless non-interactive mode driven purely by the env PAT token
+          if ! FETCHED_SECRET=$(pass-cli secret get "$SECRET_PATH" --no-session 2>/dev/null); then
+            echo "❌ Error: Authentication failed, vault unauthorized, or item path does not exist: $SECRET_PATH"
+            exit 1
+          fi
+
+          # Protect the runtime logs from leaking data via accidental prints
+          echo "::add-mask::$FETCHED_SECRET"
+
+          # Inject cleanly into the downstream runner shell scope using safe multiline EOF blocks
+          echo "$ENV_VAR_NAME<<EOF" >> $GITHUB_ENV
+          echo "$FETCHED_SECRET" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+          echo "✅ Successfully mapped and masked: $ENV_VAR_NAME"
+
+        done <<< "${{ inputs.secrets_map }}"
+
+        echo ""
+        echo "===================================================="
+        echo "🚀 PIPELINE READY: All secrets loaded safely into GITHUB_ENV"
+        echo "===================================================="
