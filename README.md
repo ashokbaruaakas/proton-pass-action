@@ -24,7 +24,7 @@ jobs:
 
       # 1. Fetch all required passwords/tokens from Proton Pass in one go
       - name: Fetch Environment Secrets
-        uses: ashokbaruaakas/proton-pass-action@v0
+        uses: ashokbaruaakas/proton-pass-action@v1
         with:
           proton_pat: ${{ secrets.PROTON_PAT }}
           secrets_map: |
