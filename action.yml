@@ -2,6 +2,10 @@ name: "Proton Pass Secret Fetcher"
 description: "Installs Proton Pass CLI and securely pulls multiple vault secrets into GITHUB_ENV"
 author: "Ashok Barua Akas"
 
+branding:
+  icon: "unlock"
+  color: "red"
+
 inputs:
   proton_pat:
     description: "The Proton Pass Personal Access Token (stored in GitHub Secrets)"
