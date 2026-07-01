@@ -1,0 +1,69 @@
+name: "🚀 Publish Production Release"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "New version to release (e.g., 1.0.1, 1.1.0)"
+        required: true
+        type: string
+      release_notes:
+        description: "Description of changes included in this version"
+        required: false
+        type: string
+        default: "Minor bug fixes and performance improvements."
+
+jobs:
+  release:
+    name: "Build, Tag, and Deploy Market Version"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Crucial: Allows the runner to create tags and push releases
+
+    steps:
+      - name: Checkout Code Engine
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Pulls full historical git refs to safely move tags
+
+      - name: Validate Action Schema Syntax
+        run: |
+          echo "Checking action core structures..."
+          if [ ! -f "action.yml" ]; then
+            echo "❌ Error: Missing core action.yml definition file."
+            exit 1
+          fi
+          echo "✅ action.yml validated successfully."
+
+      - name: Configure Git Author Metadata
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@://github.com"
+
+      - name: Generate SemVer Tags Locally
+        run: |
+          VERSION_TAG="v${{ inputs.version }}"
+          echo "Targeting specific version tag: $VERSION_TAG"
+
+          # Create or force-override localized Git tag tracking blocks
+          git tag -a "$VERSION_TAG" -m "Automated release $VERSION_TAG"
+          git tag -fa v1 -m "Moving major version pointer to $VERSION_TAG"
+
+      - name: Publish Official GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Built-in token, no configuration needed
+        run: |
+          VERSION_TAG="v${{ inputs.version }}"
+
+          echo "Deploying official release asset metadata..."
+          gh release create "$VERSION_TAG" \
+            --title "$VERSION_TAG - Production Stable" \
+            --notes "${{ inputs.release_notes }}" \
+            --target main
+
+      - name: Sync and Propagating Moving Version Pointers
+        run: |
+          echo "Pushing moving tags to synchronize tracking repositories..."
+          git push origin "v${{ inputs.version }}"
+          git push origin v1 --force
+          echo "🎉 System successfully synced to v${{ inputs.version }} and @v1!"
