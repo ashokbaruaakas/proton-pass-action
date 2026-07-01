@@ -13,13 +13,13 @@ jobs:
     name: "Build, Tag, and Deploy Market Version"
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Allows the runner to create tags and push releases
+      contents: write
 
     steps:
       - name: Checkout Code Engine
         uses: actions/checkout@v7
         with:
-          fetch-depth: 0 # Crucial: Fetches full history so GitHub can calculate changes since the last tag
+          fetch-depth: 0 # Fetches full history so git can trace previous version targets
 
       - name: Validate Action Schema Syntax
         run: |
@@ -45,22 +45,35 @@ jobs:
           echo "Targeting specific version tag: $VERSION_TAG"
           echo "Calculated dynamic major version: $MAJOR_VERSION"
 
+          PREVIOUS_TAG=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1 || echo "")
+          echo "Determined historical baseline tag: $PREVIOUS_TAG"
+
           # Create and force-override localized Git tag tracking blocks
           git tag -fa "$VERSION_TAG" -m "Automated release $VERSION_TAG"
           git tag -fa "$MAJOR_VERSION" -m "Moving major version pointer to $VERSION_TAG"
 
-          # Save these calculated values to environment variables for subsequent steps
+          # Export tracking parameters down to subsequent environment runners
           echo "VERSION_TAG=$VERSION_TAG" >> $GITHUB_ENV
           echo "MAJOR_VERSION=$MAJOR_VERSION" >> $GITHUB_ENV
+          echo "PREVIOUS_TAG=$PREVIOUS_TAG" >> $GITHUB_ENV
 
       - name: Publish Official GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Deploying official release asset metadata..."
-          gh release create "$VERSION_TAG" \
-            --generate-notes \
-            --target main
+
+          if [ -n "$PREVIOUS_TAG" ]; then
+            echo "Building notes with explicit boundary target: $PREVIOUS_TAG"
+            gh release create "$VERSION_TAG" \
+              --notes-start-tag "$PREVIOUS_TAG" \
+              --generate-notes \
+              --target main
+          else
+            gh release create "$VERSION_TAG" \
+              --generate-notes \
+              --target main
+          fi
 
       - name: Sync and Propagating Moving Version Pointers
         run: |
