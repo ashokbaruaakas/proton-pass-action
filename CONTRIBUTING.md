@@ -31,11 +31,35 @@ To maintain standard portability across all default GitHub runner architectures 
 
 - **Strict Error Trapping**: Keep `set -eo pipefail` active at the top of the shell runner runtime block. Commands must terminate explicitly upon failure.
 - **No Side-Effects**: This action must remain completely headless. Do not write actions that drop active user sessions, generate interactive login prompts, or write unmasked persistence caches to the runner disk.
-- **Variable Masking**: Any script modification that touches raw secret data **must** pipe the string payload into the log scrubber stream immediately:
+- **Variable Masking**: Any script modification that touches raw secret data **must** mask every emitted line so multiline payloads (for example SSH keys) are not printed in logs:
   ```bash
-  echo "::add-mask::\$FETCHED_SECRET"
+  while IFS= read -r secret_line || [[ -n "$secret_line" ]]; do
+    if [ -n "$secret_line" ]; then
+      echo "::add-mask::$secret_line"
+    fi
+  done <<< "$FETCHED_SECRET"
   ```
-- **Line Wrapping**: Always structure environment variable injections via multiline `EOF` markers to preserve complex text targets like private SSH configurations or SSL certs.
+- **Line Wrapping**: Always structure environment variable injections with a unique per-secret heredoc delimiter when writing to `GITHUB_ENV` so embedded lines cannot accidentally terminate the block.
+
+---
+
+## ✅ Automated Testing on `main`
+
+This repository runs an automated integration test workflow on every push to `main` (including post-merge commits). You can also run it manually via **workflow_dispatch**.
+
+Current integration test convention:
+
+```bash
+TEST_SECRET=pass://TestVault/TEST/TEST_SECRET
+```
+
+The CI job executes the local composite action and verifies that `TEST_SECRET` is injected into `GITHUB_ENV` with the expected value from Proton Pass.
+
+Required repository secret:
+
+```text
+PROTON_PAT
+```
 
 ---
 

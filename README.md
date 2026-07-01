@@ -55,12 +55,13 @@ jobs:
 
 ## 🔒 Security Best Practices
 
-1. **Log Masking**: This action automatically applies GitHub's `::add-mask::` syntax to all fetched values. If a following step accidentally attempts to print or echo a loaded variable, it will display safely in the runner console as `***`.
+1. **Log Masking**: This action automatically applies GitHub's `::add-mask::` syntax across fetched secret content, including multiline values (for example private keys), so accidental log output is redacted as `***`.
 2. **Token Scope**: Ensure your Personal Access Token has been granted explicit permissions on your local machine before executing the pipeline:
    ```bash
    pass-cli pat access grant --pat-name "Your-Token-Name" --vault-name "MyVault" --role viewer
    ```
-3. **No Local Profiles**: This action communicates statefully using the official `--no-session` headless workflow. It leaves behind no active login states or authorization caches on the host GitHub runner filesystem.
+3. **Safe Multiline Export**: Secret values are written to `GITHUB_ENV` using unique per-secret delimiters so multiline payloads are preserved exactly without truncation.
+4. **No Local Profiles**: This action communicates statefully using the official `--no-session` headless workflow. It leaves behind no active login states or authorization caches on the host GitHub runner filesystem.
 
 ---
 
