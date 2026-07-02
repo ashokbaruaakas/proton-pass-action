@@ -1,5 +1,7 @@
 # Proton Pass Secret Fetcher Action 🔒
 
+⚙️ **High-Performance Pure Bash Engine**
+
 A high-performance, secure GitHub Composite Action to install the Proton Pass CLI and inject multiple secrets directly into your workflow's `GITHUB_ENV` context in a single execution step.
 
 ---
